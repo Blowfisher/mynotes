@@ -2,7 +2,7 @@
 
 #设定时区
 #ansible kube  -m command -a "ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime"
-
+ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 
 
 #设定时间
