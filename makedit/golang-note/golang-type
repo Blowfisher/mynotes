@@ -1,0 +1,50 @@
+自定义类型
+type Duration int64
+
+结构类型 struct
+type user struct{
+  name string
+  email string
+  ext int
+  privileged bool
+}
+
+声明：
+lisa :=user{"lisa","lisa@email.com",123,true}
+lisa :=user{
+    name: "Lisa",
+    email: "lisa@email.com",
+    ext: 123,
+    privileged: true,
+}
+
+类型嵌套：
+type admin struct {
+   person user
+   level string
+}
+嵌套实例化：Bambo := admin{{"Bambo","2305901977@qq.com",123,true},"secure"}
+类型的方法：func 函数名间有参数接收者 就称为方法，没有的话就是函数（接收者分：值接受者和指针接收者）
+1、值接受者
+func (u user) notify(){
+    fmt.Printf("Sending User Email To %s<%s>\n",
+    u.name,
+    u.email)
+}
+2、指针接收者
+func (u *user)changeEmail(email string){
+    u.email = email
+}
+
+
+
+内置类型: 值传递（字符串string 整数int 浮点数float 布尔值bool）
+引用类型：地址传递（切片slice 映射map 通道channel 接口interface 函数function）
+       声明引用类型时创建的变量称为 标头值
+
+
+
+接口：interface
+type Reader interface{
+    Read(p []byte)(n int,err error)
+}
