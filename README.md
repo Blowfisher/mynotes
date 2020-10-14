@@ -18,3 +18,29 @@ cmd="date --date=@`date +%s`"
 data=`${cmd}`
 ansible kube -m command -a "date -s '$data'"
 ```
+#### Jenkins note
+pipeline demo 
+```jenkins
+pipeline {
+    agent any
+    options{
+        timestamps()
+    }
+    stages {
+        stage('Hello') {
+            input{
+                message "Should we cotinue? "
+                ok "No, we should not."
+            }
+            steps {
+                echo 'Hello World'
+                script{
+                    ip = sh(returnStdout:true, script:'bash /data/cn-vd-conf-template/get_ip.sh ${component} ${index}').trim()
+                }
+                sh "echo IP is: ${ip}"
+                sh "sed -i /${ip}/d /data/cn-vd-conf-template/hosts"
+            }
+        }
+    }
+}
+```
