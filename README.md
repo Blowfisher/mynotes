@@ -3,6 +3,7 @@
 [High avaliable for kubernetes](https://github.com/kubernetes/kubeadm/blob/master/docs/ha-considerations.md#options-for-software-load-balancing "rely on kubeadm tool")
 
 #### Shell note
+Here is a method that to set host time serise
 ```bash
 #!/bin/bash
 
