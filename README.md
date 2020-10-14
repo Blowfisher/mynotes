@@ -38,7 +38,7 @@ pipeline {
                     ip = sh(returnStdout:true, script:'bash /get_ip.sh ${component} ${index}').trim()
                 }
                 sh "echo IP is: ${ip}"
-                sh "sed -i /${ip}/d /data/cn-vd-conf-template/hosts"
+                sh "sed -i /${ip}/d /etc/ansible/hosts"
             }
         }
     }
