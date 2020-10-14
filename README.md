@@ -1,3 +1,4 @@
-# mynotes
-=========
+mynotes
+=======
+
 Study notebook
