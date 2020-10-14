@@ -1,3 +1,5 @@
+# Javascript note
+```text
 Javascript  区分大小写
 
 
@@ -1025,7 +1027,7 @@ ready：当页面被载入并且dom树完成初始化后触发
 异常处理
 try ... catch ... finally
 
-
+```
 
 
 
