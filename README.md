@@ -35,7 +35,7 @@ pipeline {
             steps {
                 echo 'Hello World'
                 script{
-                    ip = sh(returnStdout:true, script:'bash /data/cn-vd-conf-template/get_ip.sh ${component} ${index}').trim()
+                    ip = sh(returnStdout:true, script:'bash /get_ip.sh ${component} ${index}').trim()
                 }
                 sh "echo IP is: ${ip}"
                 sh "sed -i /${ip}/d /data/cn-vd-conf-template/hosts"
