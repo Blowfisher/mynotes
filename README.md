@@ -1,6 +1,9 @@
 #### kubernetes note
 
-  [High avaliable for kubernetes](https://github.com/kubernetes/kubeadm/blob/master/docs/ha-considerations.md#options-for-software-load-balancing "rely on kubeadm tool")
+  [High avaliable for kubernetes](https://github.com/kubernetes/kubeadm/blob/master/docs/ha-considerations.md#options-for-software-load-balancing "rely on kubeadm tool")</br>
+  
+#### AWS ElasticSearch Service  
+[AWS elasticsearch service docs]("https://opendistro.github.io/for-elasticsearch-docs/docs/ism/")
 
 #### Shell note
   Here is a method that to set host time serise
