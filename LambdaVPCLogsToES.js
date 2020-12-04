@@ -1,4 +1,5 @@
 // v1.1.2
+// https://amazonaws-china.com/cn/blogs/china/amazon-elasticsearch-service-vpc/
 var https = require('https');
 var zlib = require('zlib');
 var crypto = require('crypto');
