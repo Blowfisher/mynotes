@@ -1,3 +1,4 @@
+```
 ifdef DEFINE_VRE
     VRE = “Hello World!”
 else
@@ -17,7 +18,7 @@ endif
 
 all:
     @echo $(VRE)
-
+```
 敲入以下make命令：
 make DEFINE_VRE=true OPT=define 输出：Hello World!
 make DEFINE_VRE=true OPT=add 输出：Hello World! Kelly!
@@ -31,3 +32,4 @@ make DEFINE_VRE= OPT=recover 输出：Hello World! Again!
 := 是覆盖之前的值
 ?= 是如果没有被赋值过就赋予等号后面的值
 += 是添加等号后面的值
+https://blog.csdn.net/weixin_38391755/article/details/80380786
