@@ -4,6 +4,7 @@
   
 #### AWS ElasticSearch Service  
 [AWS elasticsearch service docs](https://opendistro.github.io/for-elasticsearch-docs/docs/ism/ "es")
+[CloudWatch to ES](LambdaVPCLogsToES.js "Javascript script")
 
 #### Shell note
   Here is a method that to set host time serise
