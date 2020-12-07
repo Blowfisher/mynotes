@@ -30,8 +30,7 @@ make DEFINE_VRE=true OPT=recover  输出：Hello World! Again! <br>
 make DEFINE_VRE= OPT=define 输出：Hello World! First! <br>
 make DEFINE_VRE= OPT=add 输出：Kelly! <br>
 make DEFINE_VRE= OPT=recover 输出：Hello World! Again! <br>
-
-从上面的结果中我们可以清楚的看到他们的区别了<br>
+“$<”表示所有的依赖目标集（也就是“foo.c bar.c”），“$@”表示目标集（也褪恰癴oo.o bar.o”）从上面的结果中我们可以清楚的看到他们的区别了<br>
 = 是最基本的赋值 <br>
 := 是覆盖之前的值 <br>
 ?= 是如果没有被赋值过就赋予等号后面的值 <br>
