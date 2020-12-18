@@ -1,4 +1,6 @@
 Centos 系统 安装NVIDIA 驱动
+========================
+```
   驱动地址：https://www.nvidia.com/Download/index.aspx
 
   选择版本：Tesla Driver for Linux x64 Version: 410.129  CUDA Toolkit: 10.0
@@ -26,6 +28,7 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl restart docker
 
+github: https://github.com/NVIDIA/nvidia-container-runtime
 ## 添加 --add-runtime=nvidia=/usr/bin/nvidia-container-runtime
 
 Dockerd daemon.json文件配置 添加：
@@ -46,3 +49,4 @@ EOF
 
 验证：
 docker run -it --rm --gpus all ubuntu nvidia-smi
+```
