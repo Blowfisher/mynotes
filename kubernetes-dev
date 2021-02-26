@@ -1,3 +1,9 @@
+Autonomous processes reacting to events from the API server (https://www.mgasch.com/2018/08/k8sevents/)
+k8s就是响应API 事件的自治进程，也称作事件驱动架构
+
+
+由于信息可以被多次传递(例如，在失败后，重新同步，等等)，并且控制器之间不直接对话，当状态被改变时，有可能出现竞争条件，例如从不同的控制器写同一个对象。称为乐观并发，需要在应用层处理(即在每个控制器逻辑中)。
+用于解决这个问题的模式是幂等、比较和重试设置(基于单调递增的资源版本)。
 controller
  1 read state of resources,
  2 update resources
@@ -17,6 +23,7 @@ Kubernetes API
 
 
 Kind 
+eg: pod 
   objects represent a persistent entity
   Lists
   Special-purpose kinds 
@@ -37,7 +44,9 @@ GroupVersionResource  GVR
 /api/v1/nodes 
 
 GroupVersionKind  GVK 
-	 
+
+Resource 
+ .../pods/nginx  	 
 	 
 API resources 
 kubectl api-resources 
@@ -106,6 +115,9 @@ type ObjectMeta struct {
   ...
 }
 
+
+---------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
 
 client set main interface 
 
@@ -264,7 +276,7 @@ import (
 )
 ....
 clientset, err := kubernetes.NewForConfig(cfg)
-informerFactory := informers.NewSharedInformerFactory(clientset,time.Second*30)
+informerFactory := informers.NewSharedInformerFactory(clientset,time.Second*30)  //每30s后 会发送完整的事件到注册了的UpdateFunc 这样控制器逻辑与API server 状态保持一致  默认会缓存所有namespace中pod的objects
 podInformer := informerFactory.Core().V1().Pods()
 podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
   AddFunc: func(new interface{}){...},
@@ -278,93 +290,485 @@ pod,err := podInformer.Lister().Pods("programing-kubenertes").Get("client-go")
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+不要从Informers改变objects
+1、 informer跟lister拥有objects，因此consumer需要在改变ojbects前deep-copy 
+2、 client返回caller拥有新的objects  (clients return fresh objects,which the claller owns.) 
+3、 转换返回共享对象 (conversions return shared objects. if the caller does own the input object,it does not own the output.)
+
+更加灵活的构造函数 NewFilteredSharedInformerFactory  可以定制缓存哪个namespace下的resource objects
+func NewFilteredSharedInformerFactory(client versioned.Interface, defaultResync time.Duration, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) SharedInformerFactor{
+...
+}
+
+type TweakListOptionsFunc func(*v1.ListOptions)  //通过 label 或field 定制哪些object 能够查到 
+
+
+------------------------------------------------------
+------------------------------------------------------
+
+Work Queue 
+k8s.io/client-go/util/workqueue 
+
+基础的 interface 
+type Interface interface {
+  Add(item interface{})
+  Len() int 
+  Get()(item interface{},shutdown bool)  //获取一个最高优先权的item，再返回之前是阻塞的
+  Done(item interface{})
+  ShutDown()
+  ShuttingDown() bool 
+}
+
+DelayingInterface 能在一段时间后add item  能避免热循环，在失败后更容易requeue  (this makes it easier to requeue items after failures without ending up in a hot-loop.)
+
+type DelayingInterface interface{
+  Interface 
+  AddAfter(item interface{}, duration time.Duration)
+}
+
+RateLimitingInterface (DelayingInterface的扩展 限制add item的速度)
+
+type RateLimitingInterface interface{
+ DelayingInterface 
+ AddRateLimited(item interface{})
+ Forget(item interface{})  //当item成功处理后会执行forget
+ NumRequeque(item interface{}) int  //返回某个item requeue多少次了
+}
+
+
+
+
+------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------
+API Machinery in Depth
+api machinery repository 是kubernetes 类型系统的基础
+简而言之： API Machinery就是从golang type 到 GVKs 再到 GVRs 再到HTTP path 的映射作用
+
+Kind 
+ CamelCase 格式化 驼峰
+ package type 在k8s中 Kinds 
+ Kind 由API groups和versioned 组成
+ kinds没有正式的一对一映射 HTTP路径。 很多kinds有 HTTP REST endpoints用来访问给了kind的object，但是也有一些kind没有HTTP endpoint (eg.. admission.k8s.io/v1beta1.AdmissionReview 使用webhook) 也有返回很多endpoints meta.k8s.io/v1.Status  
+)
+
+Resources 
+ Resources are again grouped and versioned (GroupVersionKind  GVK  (core term  eg: pod ))
+ 每一个GVR对应一个HTTP 路径，GVR被API server用来识别定义REST endpoints 
+ eg: 
+   apps/v1.deployments (GVR)<---> /apis/apps/v1/namespace/Namespace/deployments (endpoint)
+ client libraries使用这种映射来访问 GVR 
+ 
+ 
+
+------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------
+
+REST Mapping
+ GVK <--------> GVR  called REST mapping 
+
+RESTMapping(gk schema.GroupKind, versions ...string)(*RESTMapping,error )
+
+type RESTMapping struct {
+  Resource schema.GroupVersionResource 
+  GroupVersionKind schema.GroupVersionKind 
+  Scope RESTScope 
+} 
+
+RESTMapper provides a number of convenience functions:
+ KindFor (resource schema.GroupVersionResource) (schema.GroupVersionKind, error)
+ 
+ KindsFor (resource schema.GroupVersionResource) ([]schema.GroupVersionKind, error)
+ 
+ ResourceFor(input schema.GroupVersionResource)(schema.GroupVersionResource,error)
+ 
+ ResourcesFor(input schema.GroupVersionResource)([]schema.GroupVersionResource,error)
+ 
+ RESTMappings(gk schema.GroupKind, versions ...string)([]*RESTMapping,error)
+
+有很多RESTMapper interface。对client applications最重要的interface是
+ k8s.io/client-go/restmapper 中的discovery-based  DeferredDiscoveryRESTMapper   
+ 通过kubernetes API server发现的信息 去动态的构建 REST mapping 
+ 与non-core resource (custom resources)通用
+ 
+ 
+------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------
+Scheme 
+pkg: k8s.io/apimachinery/pkg/runtime 
+
+ func (s *scheme) ObjectKinds(obj Object)([]schema.GroupVersionKind, bool,error)
+
+最主要的特征是一个scheme 是Golang Type 跟GVKS的映射
+
+sheme 在已知的object golang type的情况下，通过golang reflection 去映射已经注册了的GVKS。
+  scheme.AddKnownTypes(schema.GropuVersionKind{"","v1","Pod"},&Pod{})
+
+** The scheme is used not only to register the golang Types and their GVK,but also to store a list of conversion functions and defaulters.  
+  
+         Golang type 
+		     | scheme
+         GroupVersionKind 
+             | RESTMapper 
+         GroupVersionResource 
+             | client 
+         HTTP path 			 
+* from golang types to GVKs to GVRs to an HTTP path ---API Machinery in a nutshell 
+
+
+
+------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------
+Custom Resources 
+  CR 是kubernetes 生态系统的中心扩展之一
+  CR一般用在小的，内部的配置对象，没有任何对应的控制逻辑，只是纯声明定义而已。
+  Custom resources 存储在ETCD instances 上
+
+              requests (client)
+                 |
+              kube-aggregator ---> kube resources(pod service,...) ----> apiextensions-apiserver(serving CRDs) ---> 404  // API Server 
+                 |                                                   |
+               aggregation				                          etcd 
+ 
+ 
+CRD eg:
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: bamboers.top.configuration.info   //必须匹配plural
+spec:
+  group: top.configuration.info
+  names:
+    kind: Bamboer
+    listKind: BamboerList
+    plural: bamboers
+    singular: bamboer
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    subresources:
+      status: {}
+    schema:
+      openAPIV3Schema:
+        type: object
+        items: array
+
+  
+CR eg:
+apiVersion: top.configuration.info/v1alpha1
+kind: Bamboer
+metadata:
+  name: example-bamboer
+spec:
+  schedule: "2:00"
+status:
+  phase: "pending"  
+
+
+
+Discovery Information
+kubectl get bamboers -v=7
+
+discovery 步骤如下：
+1 初始化，获取kubectl配置信息
+2 kubectl通过/apis 获取有哪些api groups 
+3 kubectl通过/apis/group 获取
+4 最后kubectl翻译得到的type, bamboers
+  Group(top.configuration.info)
+  Version(v1alpha1)
+  Resource(bamboers)
+  
+当discovery endpoints 翻译后提供了所有需要的信息  由 RESTMapper实现  kubectl会缓存在  ~/.kubectl 10minitues后会失效 
+
+
+------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------
+Type Definitions
+ CRDs 是 apiextensions-apiserver 的资源
+ kubectl describe crd crd-name 
+
+条件： 
+NameAccepted: 描述spec中给定的名字是否一致 有无冲突
+Established: 描述api server在status.accetedName下的资源
+eg:
+Status:
+  Accepted Names:
+    Kind:       Bamboer
+    List Kind:  BamboerList
+    Plural:     bamboers
+    Singular:   bamboer
+  Conditions:
+    Last Transition Time:  2021-02-23T07:52:38Z
+    Message:               no conflicts found
+    Reason:                NoConflicts
+    Status:                True
+    Type:                  NamesAccepted
+    Last Transition Time:  2021-02-23T07:52:16Z
+    Message:               the initial names have been accepted
+    Reason:                InitialNamesAccepted
+    Status:                True
+    Type:                  Established
+  Stored Versions:
+    v1alpha1
+Events:  <none>
+
+
+CRD 中某些字段在CRD 创建很久后还能修改，比如增加 short names 或字段,当发生names冲突时，NameAccepted变为false
+
+Short name and categories 
+
+short name定义
+spec:
+  names:
+    categories: 
+	- all   //当kubectl get all 时会显示当前namespace中的CR 
+	kind: string 
+	listKind: stringlist
+	plural: strings 
+	shortNames:   // like configmap as cm ;deamonset as ds 
+	- ts1
+	- ts2
+	singular: string lowercase
+
+定制 printer columns
+spec:
+  ...
+  versions:
+    additionalPrinterColumns: 
+    - name: string 	  //printer column name 
+	  description: string 
+	  jsonPath: .spec.fieldName | .status.fieldName   //simple JSON path 不需要过多迭代
+	  type:  string 
+	  priority: 0 //0 print 
+	  format: string
+  ...
+
+eg:
+additionalPrinterColumns:
+- name: schedule
+  type: string 
+  jsonPath: .spec.schedule 
+- name: phase
+  type: string
+  jsonPath: .status.phase 
+
+------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------
+
+subresources 
+  like UpdateStatus 
+  subresources are special http endpoints.
+
+standard HTTP Path:   /api/v1/namespaces/default/pods/name 
+subresources path:
+  /api/v1/namespaces/Namespace/pods/Name/logs
+  /api/v1/namespaces/Namespace/pods/Name/portforward
+  /api/v1/namespaces/Namespace/pods/Name/exec 
+  /api/v1/namespaces/Namespace/pods/Name/status 
+  
+Status subresources 
+  /status 用来区分用户定义的spec status 与controller 提供的status  
+   1、用户通常不应该修改status 字段
+   2、 controller 不应该写spec 字段
+
+/status 变化时   
+1、它们忽略在创建和更新期间对主HTTP端点上状态的更改(在创建期间只删除状态)。
+
+2、同样，/status子资源端点会忽略负载状态之外的更改。无法在/status端点上进行创建操作。
+
+3、只要元数据(metadata)和状态(status)之外的内容发生变化(这特别意味着spec中的变化)，主资源端点就会增加metadata.generation的值。这可以用作控制器的触发器，指示用户的愿望发生了改变。 /status 只关注spec 变化
+
+
+Scale subresource 
+  /scale是 resource的view。允许我们view，修改replica值  用于resource 伸缩 
+  
+kubectl scale --replicas=3 your-custom-resource -v=7 
+
+  
+object  Scale from  API group autoscaling/v1 
+
+type Scale struct{
+  metav1.TypeMeta `json:",inline"`
+  metav1.ObjectMeta `json:"metadata,omitempty"`
+  Spec ScaleSpec `json:"spec,omitempty"`
+  Status ScaleStatus `json:"status,omitempty"`
+}   
+
+
+type ScaleSpec struct{
+  Replicas int32 `json:"replicas,omitempty"`
+}
+
+type ScaleStatus struct{
+  Replicas int32 `json:"replicas"`
+  Selector string `json:"selector,omitempty"`
+}
+
+
+
+=================================================
+client选择
+1、 client-go dynamic client (dynamic client)
+2、 使用typed client:
+    A) use operator SDK and kuberbuilder 
+	B) client-gen 
+这三种类型的客户机都有各自的用途，优缺点取决于使用它们的上下文。在处理未知对象的通用控制器中，
+只有动态客户端(dynamic-client)可以使用。在类型安全有助于加强代码正确性的控制器中，生成的客户机(generated client)非常适合。
+Kubernetes项目本身有如此多的贡献者，因此代码的稳定性非常重要，即使它被如此多的人扩展和重写。
+如果便利性和高速度以及最小的管道非常重要，那么控制器运行时(controller-runtime client)客户端是一个很好的选择。
+
+
+
+Dynamic Client 
+  仅使用 json.Unmarsal, 既不使用shceme 也不使用 RESTMapper。 这需要开发者知道GVR <---> type知识 
+  input output 都是 *unstructured.Unstructured   
+  garbage collection controller 使用dynamic client，广泛被使用
+  
+schema.GroupVersionResource{
+  Group: "apps",
+  Version: "v1",
+  Resource: "deployments",
+} 
+
+REST Access a GVR method:
+Namespaced-scope:  client.Resource(gvr).Namespace(namespace).Get("foo",metav1.GetOptions{})
+cluster-scope: client.Resource(gvr).Get("foo",metav1.GetOptions{})  
+
+
+
+有助手在同一个包简化检索字段和操作对象的可能
+name, found, err := unstructured.NestedString(u.Object,"metadata","name")  //u.Object是否有叫Name 的字符串，如果有 found = true ，如果没有或者Name type不是string 
+func NestedCopy(obj map[string]interface{},fields ...string)(interface{},bool,error){...}
+func NestedFieldNoCopy(obj map[string]interface{},fields ...string)(interface{},bool,error){...}
+
+func NestedBool(obj map[string]interface{},fields ...string)(bool,bool,error)
+func NestedFloat64(obj map[string]interface{},fields ...string)(float64,bool,error)
+func NestedInt64(obj map[string]interface{},fields ...string)(int64,bool,error)
+func NestedStringSlice(obj map[string]interface{},fields ...string)([]string,bool,error)
+func NestedSlice(obj map[string]interface{},fields ...string)([]interface{},bool,error)
+func NestedStringMap(obj map[string]interface{},fields ...string)(map[string]string,bool,error)
+
+Setter:
+func SetNestedField(obj,value,path...)
+
+
+=================================================
+=================================================
+Typed Clients 
+ Typed Clients 没有使用map[string]interface{}而是使用与GVK不一样的 真实的Golang Type 。这样使用起来更加简单，而且增加了类型安全，让代码更加简洁 提高可读性。
+ 付出的代价是减少灵活性，增加复杂性。
+ 
+
+Typed client created via client-gen 
+ pkg/generated/clientset/versioned (pkg/client/clientset/versioned  the old version)
+ doc.go 跟register.go 文件
+
+package version
+import (
+  metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+  "k8s.io/apimachinery/pkg/runtime"
+  "k8s.io/apimachinery/pkg/runtime/scheme"
+  
+  group "repo/pkg/apis/group"
+)
+
+var SchemeGroupVersion = schema.GroupVersion{
+  Group: group.GroupName,
+  Version: "version",
+} 
+
+func Kind(kind string) shcema.GroupKind{
+   return SchemeGroupVersion.WithKind(kind).GroupKind()
+}
+
+func Resource(resource string)schema.GroupResource{
+  return SchemeGroupVersion.WithResource(resource).GroupResource()
+}
+
+var (
+  SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
+  AddToScheme = SchemeBuidler.AddToScheme 
+)
+
+func addKnownTypes(scheme *runtime.Scheme)error {
+  scheme.AddKnownTypes(SchemeGroupVersion,
+  &SomeKind{},
+  &SomeKindList{},
+  )
+  metav1.AddToGroupVersion(scheme,SchemeGroupVersion)
+  return nil
+}
+
+
+
+
+
+=================================================
+==================================================================================================
+=================================================
+Automating Code Generation
+ Very early in the Kubernetes development process, more and more code had to be rewritten as more resources were added to the system. Code generation
+made the maintenance of this code much easier.
+
+使用code-generators
+k8s.io/code-generator/generate-groups.sh 
+hack/update-codegen.sh 
+
+Usage: $(basename "$0") <generators> <output-package> <apis-package> <groups-versions> ...
+  <generators>        the generators comma separated to run (deepcopy,defaulter,client,lister,informer) or "all".
+  <output-package>    the output package name (e.g. github.com/example/project/pkg/generated).
+  <apis-package>      the external types dir (e.g. github.com/example/api or github.com/example/project/pkg/apis).
+  <groups-versions>   the groups and their versions in the format "groupA:v1,v2 groupB:v1 groupC:v2", relative
+                      to <api-package>.
+  ...                 arbitrary flags passed to all generator binaries.
+  
+eg:
+vendor/k8s.io/code-generator/generate-groups.sh all \
+       github.com/programming-kubernetes/cnat/cnat-client-go/pkg/generated \
+	   github.com/programming-kubernetes/cnat/cnat-client-go/pkg/apis \
+	   cnat:v1alpha1 \
+	   --output-base "${GOPATH}/src" \
+	   --go-header-file "hack/boilerplate.go.txt"
+
+all: 4个标准代码生成器
+deepcopy-gen 
+ generates func(t *T)DeepCopy() *T  and func(t *T)DeepCopyInto(*T)methods 
+ 
+client-gen 
+ create typed client sets 
+
+informer-gen 
+ creates informers for CRs that offer an event-based interface to react to changes of CRs on the server.
+ 
+lister-gen 	   
+  Creates listers for CRs that offer a read-only caching layer for GET and LIST requests.
+
+
+Controlling the generators with tags 
+两种tags：
+  Global tags above the package line in a file called doc.go 
+  Local tags above a type declaration 
+  
+多个tags时 需要空格
+// +second-comment-block-tag 
+
+// +first-comment-block-tag 
+type Foo struct{
+}  
+
+
+
+Global Tags
+e.g. pkg/apis/group/version/doc.go 
+
+// +k8s:deepcopy-gen=package 
+
+// Package v1 is the v1alpha1 version of the API 
+// +groupName=cnat.programing-kubernetes.info    #定义API group name
+package v1alpha1 
 
 
 
