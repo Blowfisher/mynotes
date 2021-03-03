@@ -12,6 +12,9 @@
 
 
 [kubernetes handbook](https://jimmysong.io/kubernetes-handbook/practice/configuring-dns.html "kubernetes jimmsong")</br>  
+
+[源码分析](https://blog.tianfeiyu.com/source-code-reading-notes/kubernetes/kube_apiserver.html "kubernetes source code anaylice")</br>  
+
 #### AWS ElasticSearch Service  
 [AWS elasticsearch service docs](https://opendistro.github.io/for-elasticsearch-docs/docs/ism/ "es")
 
