@@ -1,6 +1,7 @@
 #### kubernetes note
 
   [High avaliable for kubernetes](https://github.com/kubernetes/kubeadm/blob/master/docs/ha-considerations.md#options-for-software-load-balancing "rely on kubeadm tool")</br>
+   [Level Triggering and Reconciliation in Kubernetes](https://hackernoon.com/level-triggering-and-reconciliation-in-kubernetes-1f17fe30333d "Events driven trigger")</br>
   
 #### AWS ElasticSearch Service  
 [AWS elasticsearch service docs](https://opendistro.github.io/for-elasticsearch-docs/docs/ism/ "es")
