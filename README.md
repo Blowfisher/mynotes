@@ -4,7 +4,7 @@
  
    [Level Triggering and Reconciliation in Kubernetes](https://hackernoon.com/level-triggering-and-reconciliation-in-kubernetes-1f17fe30333d "Events driven trigger")</br>
    
-  [kubernetes notes](./kubernetes-dev "rely on kubeadm tool")</br>   
+  [kubernetes programming](./kubernetes-dev "kubernetes programming")</br>   
   
 #### AWS ElasticSearch Service  
 [AWS elasticsearch service docs](https://opendistro.github.io/for-elasticsearch-docs/docs/ism/ "es")
