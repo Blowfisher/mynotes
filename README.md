@@ -10,6 +10,7 @@
   
 [SDN website](https://sdn.feisky.xyz/ "kubernetes SDN")</br>  
 
+[Nvidia GPU](https://blog.csdn.net/yunqiinsight/article/details/88389913 "Nvidia GPU怎么在kubernetes中工作的")</br> 
 
 [kubernetes handbook](https://jimmysong.io/kubernetes-handbook/practice/configuring-dns.html "kubernetes jimmsong")</br>  
 
