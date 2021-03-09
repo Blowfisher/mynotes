@@ -17,4 +17,4 @@
 [源码分析](https://blog.tianfeiyu.com/source-code-reading-notes/kubernetes/kube_apiserver.html "kubernetes source code anaylice")</br>  
 
 
-("./client-go-controller-interaction.jpeg")
+"# ./client-go-controller-interaction.jpeg"
