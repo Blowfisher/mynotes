@@ -14,6 +14,8 @@
 
 [kubernetes handbook](https://jimmysong.io/kubernetes-handbook/practice/configuring-dns.html "kubernetes jimmsong")</br>  
 
+[Flanneld 解析](https://www.cnblogs.com/goldsunshine/p/10740928.html)<br/>
+
 [源码分析](https://blog.tianfeiyu.com/source-code-reading-notes/kubernetes/kube_apiserver.html "kubernetes source code anaylice")</br>  
 
 #### AWS ElasticSearch Service  
